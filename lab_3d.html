@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>35 kV SST Microgrid Innovation Lab</title>
+  <style>
+    :root {
+      --brand: #00A6E5;
+      --panel-bg: rgba(17, 24, 39, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.14);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #eef2f6;
+      font-family: Helvetica, "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #ui {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: min(310px, calc(100vw - 32px));
+      color: var(--text);
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.32);
+      backdrop-filter: blur(14px);
+      z-index: 10;
+      user-select: none;
+    }
+
+    #ui header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    #ui h1 {
+      margin: 0;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.35;
+    }
+
+    #ui .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .ui-body {
+      display: grid;
+      gap: 12px;
+      padding: 12px 14px 14px;
+    }
+
+    .section {
+      display: grid;
+      gap: 8px;
+    }
+
+    .section-title {
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 28px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .row strong {
+      color: white;
+      font-weight: 600;
+    }
+
+    .switch {
+      display: inline-grid;
+      grid-template-columns: auto 42px;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .switch input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .track {
+      position: relative;
+      width: 42px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.35);
+      transition: background 160ms ease;
+    }
+
+    .track::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+      transition: transform 160ms ease;
+    }
+
+    .switch input:checked + .track {
+      background: var(--brand);
+    }
+
+    .switch input:checked + .track::after {
+      transform: translateX(20px);
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: white;
+      background: rgba(148, 163, 184, 0.16);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+    button:hover,
+    button.active {
+      background: rgba(0, 166, 229, 0.32);
+      border-color: rgba(0, 166, 229, 0.84);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    #status {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      max-width: min(520px, calc(100vw - 32px));
+      padding: 9px 12px;
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      font-size: 12px;
+      line-height: 1.4;
+      backdrop-filter: blur(12px);
+      z-index: 9;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <aside id="ui" aria-label="Scene controls">
+    <header>
+      <h1>35 kV SST 微電網 Innovation Lab</h1>
+      <div class="sub">Y-up / metric scale / engineering showcase</div>
+    </header>
+    <div class="ui-body">
+      <section class="section">
+        <div class="section-title">View</div>
+        <div class="button-grid">
+          <button id="viewTop" type="button">Top</button>
+          <button id="viewIso" type="button" class="active">ISO</button>
+          <button id="viewWalk" type="button">Walk</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Building</div>
+        <label class="row switch">
+          <span>屋頂顯示</span>
+          <input id="roofVisible" type="checkbox" checked />
+          <span class="track"></span>
+        </label>
+        <label class="row switch">
+          <span>屋頂半透明</span>
+          <input id="roofTranslucent" type="checkbox" checked />
+          <span class="track"></span>
+        </label>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Circulation</div>
+        <label class="row switch">
+          <span>工程動線</span>
+          <input id="pathEngineering" type="checkbox" checked />
+          <span class="track"></span>
+        </label>
+        <label class="row switch">
+          <span>卡車動線</span>
+          <input id="pathTruck" type="checkbox" checked />
+          <span class="track"></span>
+        </label>
+        <label class="row switch">
+          <span>參觀動線</span>
+          <input id="pathVisitor" type="checkbox" checked />
+          <span class="track"></span>
+        </label>
+      </section>
+
+      <section class="section">
+        <div class="section-title">Equipment</div>
+        <label class="row switch">
+          <span>SST 內部剖面</span>
+          <input id="sstCutaway" type="checkbox" />
+          <span class="track"></span>
+        </label>
+        <label class="row switch">
+          <span>BESS 內部剖面</span>
+          <input id="bessCutaway" type="checkbox" />
+          <span class="track"></span>
+        </label>
+      </section>
+    </div>
+  </aside>
+  <div id="status">ISO 視角。快捷鍵：1 Top，2 ISO，3 Walk。Walk 模式可用 WASD / 方向鍵移動。</div>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+
+    // === Global Constants ===
+    const BRAND_COLOR = "#00A6E5";
+    const UNIT = "m";
+    const BUILDING = Object.freeze({
+      widthX: 40,
+      depthZ: 14,
+      heightY: 9,
+      wallThickness: 0.3,
+      roofThickness: 0.14,
+      minClearHeight: 8
+    });
+    const FLOOR = Object.freeze({
+      slabThickness: 0.08,
+      labelY: 3,
+      routeY: 0.065,
+      borderY: 0.04
+    });
+    const CAMERA = Object.freeze({
+      near: 0.1,
+      far: 260,
+      fov: 52,
+      topHeight: 56,
+      walkEyeHeight: 1.7,
+      walkSpeed: 4.2,
+      walkTurnSpeed: 1.85
+    });
+    const COLORS = Object.freeze({
+      wall: "#E8E8E8",
+      roof: "#F5F5F5",
+      floor: "#C8C8C8",
+      brand: BRAND_COLOR,
+      highVoltage: "#E63946",
+      visitor: "#1D4ED8",
+      engineering: "#F5C518",
+      container: "#2E3A45",
+      glass: "#A8C5DA",
+      aluminum: "#9CA3AF",
+      crane: "#FBBF24",
+      conduit: "#B8BEC7",
+      coldWhite: "#F0F8FF",
+      warmWhite: "#FFF4E0",
+      exit: "#22C55E",
+      darkText: "#111827",
+      black: "#111827",
+      white: "#FFFFFF"
+    });
+    const OPENINGS = Object.freeze({
+      truckDoor: { x1: 10, x2: 15, height: 5, label: "Truck Door 5 m x 5 m" },
+      southExit: { x1: 34.4, x2: 35.6, height: 2.2, label: "Emergency Exit" },
+      visitorDoor: { x1: 3, x2: 5, height: 2.5, label: "Visitor Entry" },
+      northExit: { x1: 29.4, x2: 30.6, height: 2.2, label: "Emergency Exit" },
+      engineeringDoor: { z1: 11.4, z2: 12.6, height: 2.2, label: "Engineering Entry" }
+    });
+    const EQUIPMENT_SIZES = Object.freeze({
+      sst: { x: 6, z: 2.4, y: 2.6 },
+      bess: { x: 12, z: 2.4, y: 2.6 },
+      hvCabinet: { x: 4, z: 1.2, y: 2.4 },
+      dcCabinet: { x: 1, z: 0.8, y: 2.2 },
+      gridSource: { x: 4, z: 2, y: 2.4 },
+      regenLoad: { x: 3, z: 2, y: 2.4 },
+      dcLoad: { x: 2, z: 0.8, y: 2.2 },
+      console: { x: 1.6, z: 0.8, y: 1.1 },
+      kiosk: { x: 0.6, z: 0.4, y: 1.4 },
+      videoWallControl: { x: 6, y: 2 },
+      videoWallFoyer: { x: 4, y: 2 }
+    });
+    const ZONES = Object.freeze([
+      { id: "Z1", zh: "展示前廳", en: "Innovation Showcase", x1: 0, z1: 11, x2: 14, z2: 14, color: COLORS.visitor },
+      { id: "Z2", zh: "中控室", en: "Control Room", x1: 14, z1: 10, x2: 24, z2: 14, color: COLORS.visitor },
+      { id: "Z3", zh: "參觀走廊", en: "Visitor Walkway", x1: 24, z1: 12, x2: 40, z2: 14, color: COLORS.visitor },
+      { id: "Z4", zh: "配電與電網模擬區", en: "Grid Simulation", x1: 0, z1: 5, x2: 10, z2: 11, color: COLORS.highVoltage },
+      { id: "Z5", zh: "SST 並聯測試區", en: "SST Parallel Test (35 kV)", x1: 10, z1: 5, x2: 22, z2: 11, color: COLORS.highVoltage },
+      { id: "Z6", zh: "直流微電網試驗區", en: "DC Microgrid (BESS + DC Bus)", x1: 22, z1: 5, x2: 34, z2: 11, color: COLORS.highVoltage },
+      { id: "Z7", zh: "工程操作區", en: "Engineering Workspace", x1: 34, z1: 5, x2: 40, z2: 14, color: COLORS.engineering },
+      { id: "Z8", zh: "檢修走廊", en: "Maintenance Aisle", x1: 0, z1: 4, x2: 34, z2: 5, color: COLORS.engineering },
+      { id: "Z9", zh: "卡車進出與吊裝通道", en: "Logistics & Lifting", x1: 0, z1: 0, x2: 34, z2: 4, color: COLORS.highVoltage }
+    ]);
+    const PATHS = Object.freeze({
+      engineering: [
+        [[39.2, 12], [37, 12]],
+        [[37, 12], [37, 4.5]],
+        [[37, 4.5], [5, 4.5]],
+        [[5, 4.5], [5, 5.55]],
+        [[16, 4.5], [16, 5.55]],
+        [[28, 4.5], [28, 5.55]]
+      ],
+      truck: [
+        [[12.5, 0.15], [12.5, 3]],
+        [[12.5, 3], [27, 3]]
+      ],
+      visitor: [
+        [[4, 13.85], [4, 13.05]],
+        [[4, 13.05], [18, 13.05]],
+        [[18, 13.05], [24, 13.05]],
+        [[24, 13.05], [38.6, 13.05]],
+        [[38.6, 13.05], [38.6, 13.85]]
+      ]
+    });
+    const ROUTE_WIDTH = 0.3;
+    const DASH = Object.freeze({ length: 0.62, gap: 0.38 });
+    const GLASS_HEIGHT = 4.05;
+    const GLASS_THICKNESS = 0.035;
+    const FRAME_THICKNESS = 0.06;
+    const CRANE = Object.freeze({
+      x1: 2,
+      x2: 34,
+      railZ1: 3,
+      railZ2: 11,
+      railY: 8.5,
+      columnStep: 4,
+      hookMinX: 12,
+      hookMaxX: 30,
+      hookZ: 7
+    });
+    const LIGHT_GRID = Object.freeze({
+      xStart: 2,
+      xEnd: 38,
+      zRows: [2, 6, 10, 13],
+      step: 4,
+      y: 8.55
+    });
+    const MATERIAL_DEFAULTS = Object.freeze({
+      routeRoughness: 0.68,
+      metalRoughness: 0.55,
+      floorRoughness: 0.42
+    });
+
+    RectAreaLightUniformsLib.init();
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#EEF2F6");
+    scene.fog = new THREE.Fog("#EEF2F6", 75, 150);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.02;
+    document.body.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(CAMERA.fov, window.innerWidth / window.innerHeight, CAMERA.near, CAMERA.far);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 5;
+    controls.maxDistance = 88;
+    controls.maxPolarAngle = Math.PI * 0.49;
+
+    const root = new THREE.Group();
+    root.name = "35 kV SST Microgrid Innovation Lab";
+    scene.add(root);
+
+    const roofGroup = new THREE.Group();
+    roofGroup.name = "Toggleable roof group";
+    root.add(roofGroup);
+
+    const zoneGroup = new THREE.Group();
+    zoneGroup.name = "Zones and floor markings";
+    root.add(zoneGroup);
+
+    const shellGroup = new THREE.Group();
+    shellGroup.name = "Building shell";
+    root.add(shellGroup);
+
+    const safetyGroup = new THREE.Group();
+    safetyGroup.name = "Safety glass and isolation";
+    root.add(safetyGroup);
+
+    const equipmentGroup = new THREE.Group();
+    equipmentGroup.name = "Equipment";
+    root.add(equipmentGroup);
+
+    const pathGroups = {
+      engineering: new THREE.Group(),
+      truck: new THREE.Group(),
+      visitor: new THREE.Group()
+    };
+    pathGroups.engineering.name = "Engineering route - dashed yellow";
+    pathGroups.truck.name = "Truck route - solid red";
+    pathGroups.visitor.name = "Visitor route - solid blue";
+    root.add(pathGroups.engineering, pathGroups.truck, pathGroups.visitor);
+
+    const conduitGroup = new THREE.Group();
+    conduitGroup.name = "Reserved conduits";
+    root.add(conduitGroup);
+
+    const craneGroup = new THREE.Group();
+    craneGroup.name = "10 t single-girder bridge crane";
+    root.add(craneGroup);
+
+    const sstCutawayTargets = [];
+    const bessCutawayTargets = [];
+
+    const mats = {
+      wall: new THREE.MeshStandardMaterial({ color: COLORS.wall, roughness: 0.82, metalness: 0.02 }),
+      roof: new THREE.MeshStandardMaterial({ color: COLORS.roof, roughness: 0.28, metalness: 0.22, transparent: true, opacity: 0.34 }),
+      roofStripe: new THREE.MeshStandardMaterial({ color: "#DBE1E8", roughness: 0.42, metalness: 0.18 }),
+      floor: new THREE.MeshStandardMaterial({ color: COLORS.floor, roughness: MATERIAL_DEFAULTS.floorRoughness, metalness: 0.08 }),
+      brand: new THREE.MeshStandardMaterial({ color: COLORS.brand, emissive: COLORS.brand, emissiveIntensity: 0.62, roughness: 0.34 }),
+      hv: new THREE.MeshStandardMaterial({ color: COLORS.highVoltage, roughness: MATERIAL_DEFAULTS.routeRoughness }),
+      visitor: new THREE.MeshStandardMaterial({ color: COLORS.visitor, roughness: MATERIAL_DEFAULTS.routeRoughness }),
+      engineering: new THREE.MeshStandardMaterial({ color: COLORS.engineering, roughness: MATERIAL_DEFAULTS.routeRoughness }),
+      container: new THREE.MeshStandardMaterial({ color: COLORS.container, roughness: 0.74, metalness: 0.42 }),
+      containerTransparent: new THREE.MeshStandardMaterial({ color: COLORS.container, roughness: 0.74, metalness: 0.42, transparent: true, opacity: 0.22, depthWrite: false }),
+      glass: new THREE.MeshPhysicalMaterial({
+        color: COLORS.glass,
+        roughness: 0.02,
+        metalness: 0,
+        transmission: 0.62,
+        thickness: 0.06,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      }),
+      aluminum: new THREE.MeshStandardMaterial({ color: COLORS.aluminum, roughness: 0.34, metalness: 0.58 }),
+      crane: new THREE.MeshStandardMaterial({ color: COLORS.crane, roughness: 0.52, metalness: 0.28 }),
+      conduit: new THREE.MeshStandardMaterial({ color: COLORS.conduit, roughness: 0.75, metalness: 0.08 }),
+      black: new THREE.MeshStandardMaterial({ color: COLORS.black, roughness: 0.58, metalness: 0.05 }),
+      white: new THREE.MeshStandardMaterial({ color: COLORS.white, roughness: 0.38 }),
+      coldLight: new THREE.MeshStandardMaterial({ color: COLORS.coldWhite, emissive: COLORS.coldWhite, emissiveIntensity: 1.2 }),
+      redLight: new THREE.MeshStandardMaterial({ color: COLORS.highVoltage, emissive: COLORS.highVoltage, emissiveIntensity: 1.7 }),
+      greenLight: new THREE.MeshStandardMaterial({ color: COLORS.exit, emissive: COLORS.exit, emissiveIntensity: 1.4 }),
+      display: new THREE.MeshStandardMaterial({ color: "#08111F", emissive: "#0EA5E9", emissiveIntensity: 0.2, roughness: 0.36, metalness: 0.08 })
+    };
+
+    function makeMat(color, options = {}) {
+      return new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.02, ...options });
+    }
+
+    function box(name, size, position, material, parent = root) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), material);
+      mesh.name = name;
+      mesh.position.set(position.x, position.y, position.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    }
+
+    function cylinder(name, radiusTop, radiusBottom, height, radialSegments, position, material, parent = root) {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments), material);
+      mesh.name = name;
+      mesh.position.set(position.x, position.y, position.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      parent.add(mesh);
+      return mesh;
+    }
+
+    function addFloorRect(x1, z1, x2, z2, color, parent, opacity = 0.055) {
+      const geometry = new THREE.PlaneGeometry(x2 - x1, z2 - z1);
+      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+      const plane = new THREE.Mesh(geometry, material);
+      plane.name = "Zone floor tint";
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.set((x1 + x2) / 2, FLOOR.borderY, (z1 + z2) / 2);
+      parent.add(plane);
+      return plane;
+    }
+
+    function addRectBorder(x1, z1, x2, z2, color, parent, width = 0.08) {
+      const material = makeMat(color, { roughness: 0.68, metalness: 0.03 });
+      box("Zone border north", { x: x2 - x1, y: 0.018, z: width }, { x: (x1 + x2) / 2, y: FLOOR.borderY + 0.012, z: z2 }, material, parent);
+      box("Zone border south", { x: x2 - x1, y: 0.018, z: width }, { x: (x1 + x2) / 2, y: FLOOR.borderY + 0.012, z: z1 }, material, parent);
+      box("Zone border east", { x: width, y: 0.018, z: z2 - z1 }, { x: x2, y: FLOOR.borderY + 0.012, z: (z1 + z2) / 2 }, material, parent);
+      box("Zone border west", { x: width, y: 0.018, z: z2 - z1 }, { x: x1, y: FLOOR.borderY + 0.012, z: (z1 + z2) / 2 }, material, parent);
+    }
+
+    function createLabelTexture(lines, color = COLORS.brand) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1024;
+      canvas.height = 256;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.shadowColor = "rgba(255,255,255,0.85)";
+      ctx.shadowBlur = 10;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = color;
+      ctx.font = '700 56px Helvetica, "Noto Sans TC", "PingFang TC", sans-serif';
+      ctx.fillText(lines[0], canvas.width / 2, 94);
+      ctx.font = '600 42px Helvetica, "Noto Sans TC", "PingFang TC", sans-serif';
+      ctx.fillText(lines[1], canvas.width / 2, 158);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return texture;
+    }
+
+    function addSpriteLabel(name, lines, position, parent, scale = { x: 5.8, y: 1.45 }) {
+      const material = new THREE.SpriteMaterial({ map: createLabelTexture(lines), transparent: true, depthWrite: false });
+      const sprite = new THREE.Sprite(material);
+      sprite.name = name;
+      sprite.position.set(position.x, position.y, position.z);
+      sprite.scale.set(scale.x, scale.y, 1);
+      parent.add(sprite);
+      return sprite;
+    }
+
+    function createPanelTexture(lines, options = {}) {
+      const {
+        width = 1024,
+        height = 512,
+        bg = "rgba(8,17,31,0.96)",
+        fg = "#FFFFFF",
+        accent = COLORS.brand,
+        fontSize = 52
+      } = options;
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, width, 18);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = fg;
+      ctx.font = `700 ${fontSize}px Helvetica, "Noto Sans TC", "PingFang TC", sans-serif`;
+      lines.forEach((line, index) => {
+        ctx.fillText(line, width / 2, height / 2 - ((lines.length - 1) * fontSize * 0.48) + index * fontSize * 0.95);
+      });
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+
+    class Zone {
+      constructor(spec) {
+        this.id = spec.id;
+        this.zh = spec.zh;
+        this.en = spec.en;
+        this.x1 = spec.x1;
+        this.z1 = spec.z1;
+        this.x2 = spec.x2;
+        this.z2 = spec.z2;
+        this.color = spec.color;
+      }
+
+      get area() {
+        return (this.x2 - this.x1) * (this.z2 - this.z1);
+      }
+
+      get center() {
+        return { x: (this.x1 + this.x2) / 2, z: (this.z1 + this.z2) / 2 };
+      }
+
+      build(parent) {
+        addFloorRect(this.x1, this.z1, this.x2, this.z2, this.color, parent);
+        addRectBorder(this.x1, this.z1, this.x2, this.z2, this.color, parent);
+        const labelScaleX = Math.min(7.4, Math.max(4.8, (this.x2 - this.x1) * 0.55));
+        addSpriteLabel(`${this.id} label`, [this.zh, this.en], { x: this.center.x, y: FLOOR.labelY, z: this.center.z }, parent, { x: labelScaleX, y: 1.25 });
+      }
+    }
+
+    // === Floor and Zone Layout ===
+    box("Polished concrete floor slab", { x: BUILDING.widthX, y: FLOOR.slabThickness, z: BUILDING.depthZ }, { x: BUILDING.widthX / 2, y: -FLOOR.slabThickness / 2, z: BUILDING.depthZ / 2 }, mats.floor, shellGroup);
+    ZONES.map((spec) => new Zone(spec)).forEach((zone) => zone.build(zoneGroup));
+
+    // === Building Shell ===
+    function addWallWithOpeningsAlongX(name, z, openings, parent) {
+      const sorted = [...openings].sort((a, b) => a.x1 - b.x1);
+      let cursor = 0;
+      sorted.forEach((opening) => {
+        if (opening.x1 > cursor) {
+          box(`${name} solid span`, { x: opening.x1 - cursor, y: BUILDING.heightY, z: BUILDING.wallThickness }, { x: (opening.x1 + cursor) / 2, y: BUILDING.heightY / 2, z }, mats.wall, parent);
+        }
+        box(`${name} lintel ${opening.label}`, { x: opening.x2 - opening.x1, y: BUILDING.heightY - opening.height, z: BUILDING.wallThickness }, { x: (opening.x1 + opening.x2) / 2, y: (BUILDING.heightY + opening.height) / 2, z }, mats.wall, parent);
+        cursor = opening.x2;
+      });
+      if (cursor < BUILDING.widthX) {
+        box(`${name} solid span`, { x: BUILDING.widthX - cursor, y: BUILDING.heightY, z: BUILDING.wallThickness }, { x: (BUILDING.widthX + cursor) / 2, y: BUILDING.heightY / 2, z }, mats.wall, parent);
+      }
+    }
+
+    function addWallWithOpeningsAlongZ(name, x, openings, parent) {
+      const sorted = [...openings].sort((a, b) => a.z1 - b.z1);
+      let cursor = 0;
+      sorted.forEach((opening) => {
+        if (opening.z1 > cursor) {
+          box(`${name} solid span`, { x: BUILDING.wallThickness, y: BUILDING.heightY, z: opening.z1 - cursor }, { x, y: BUILDING.heightY / 2, z: (opening.z1 + cursor) / 2 }, mats.wall, parent);
+        }
+        box(`${name} lintel ${opening.label}`, { x: BUILDING.wallThickness, y: BUILDING.heightY - opening.height, z: opening.z2 - opening.z1 }, { x, y: (BUILDING.heightY + opening.height) / 2, z: (opening.z1 + opening.z2) / 2 }, mats.wall, parent);
+        cursor = opening.z2;
+      });
+      if (cursor < BUILDING.depthZ) {
+        box(`${name} solid span`, { x: BUILDING.wallThickness, y: BUILDING.heightY, z: BUILDING.depthZ - cursor }, { x, y: BUILDING.heightY / 2, z: (BUILDING.depthZ + cursor) / 2 }, mats.wall, parent);
+      }
+    }
+
+    addWallWithOpeningsAlongX("South wall", -BUILDING.wallThickness / 2, [OPENINGS.truckDoor, OPENINGS.southExit], shellGroup);
+    addWallWithOpeningsAlongX("North wall", BUILDING.depthZ + BUILDING.wallThickness / 2, [OPENINGS.visitorDoor, OPENINGS.northExit], shellGroup);
+    addWallWithOpeningsAlongZ("East wall", BUILDING.widthX + BUILDING.wallThickness / 2, [OPENINGS.engineeringDoor], shellGroup);
+    box("West wall", { x: BUILDING.wallThickness, y: BUILDING.heightY, z: BUILDING.depthZ }, { x: -BUILDING.wallThickness / 2, y: BUILDING.heightY / 2, z: BUILDING.depthZ / 2 }, mats.wall, shellGroup);
+
+    box("Open truck sliding door left leaf", { x: 2.35, y: 5, z: 0.08 }, { x: 8.7, y: 2.5, z: -0.46 }, mats.aluminum, shellGroup);
+    box("Open truck sliding door right leaf", { x: 2.35, y: 5, z: 0.08 }, { x: 16.3, y: 2.5, z: -0.46 }, mats.aluminum, shellGroup);
+    box("Truck door overhead guide rail", { x: 6, y: 0.12, z: 0.16 }, { x: 12.5, y: 5.12, z: -0.48 }, mats.aluminum, shellGroup);
+
+    function addDoorPanel(name, x, z, width, height, material, parent, alongX = true) {
+      const size = alongX ? { x: width, y: height, z: 0.045 } : { x: 0.045, y: height, z: width };
+      box(name, size, { x, y: height / 2, z }, material, parent);
+    }
+    addDoorPanel("Visitor glass door", 4, BUILDING.depthZ + 0.02, 1.75, 2.45, mats.glass, shellGroup);
+    addDoorPanel("North emergency exit door", 30, BUILDING.depthZ + 0.025, 1.08, 2.15, mats.greenLight, shellGroup);
+    addDoorPanel("South emergency exit door", 35, -0.025, 1.08, 2.15, mats.greenLight, shellGroup);
+    addDoorPanel("Engineering entry door", BUILDING.widthX + 0.025, 12, 1.1, 2.15, mats.aluminum, shellGroup, false);
+
+    box("Roof metal sheet", { x: BUILDING.widthX + BUILDING.wallThickness, y: BUILDING.roofThickness, z: BUILDING.depthZ + BUILDING.wallThickness }, { x: BUILDING.widthX / 2, y: BUILDING.heightY + BUILDING.roofThickness / 2, z: BUILDING.depthZ / 2 }, mats.roof, roofGroup);
+    for (let z = 0.8; z < BUILDING.depthZ; z += 1.2) {
+      box("Roof standing seam", { x: BUILDING.widthX + 0.2, y: 0.028, z: 0.035 }, { x: BUILDING.widthX / 2, y: BUILDING.heightY + BUILDING.roofThickness + 0.016, z }, mats.roofStripe, roofGroup);
+    }
+
+    // === Safety Isolation Glass ===
+    function addGlassWall(name, x1, z1, x2, z2, height = GLASS_HEIGHT) {
+      const group = new THREE.Group();
+      group.name = name;
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const length = Math.hypot(dx, dz);
+      const angle = -Math.atan2(dz, dx);
+      const center = { x: (x1 + x2) / 2, z: (z1 + z2) / 2 };
+      const glass = box(`${name} tempered glass`, { x: length, y: height, z: GLASS_THICKNESS }, { x: center.x, y: height / 2, z: center.z }, mats.glass, group);
+      glass.rotation.y = angle;
+      const top = box(`${name} top aluminum frame`, { x: length, y: FRAME_THICKNESS, z: FRAME_THICKNESS }, { x: center.x, y: height + FRAME_THICKNESS / 2, z: center.z }, mats.aluminum, group);
+      top.rotation.y = angle;
+      const bottom = box(`${name} bottom aluminum frame`, { x: length, y: FRAME_THICKNESS, z: FRAME_THICKNESS }, { x: center.x, y: FRAME_THICKNESS / 2, z: center.z }, mats.aluminum, group);
+      bottom.rotation.y = angle;
+      const mullionCount = Math.max(2, Math.floor(length / 2));
+      for (let i = 0; i <= mullionCount; i += 1) {
+        const ratio = i / mullionCount;
+        const px = x1 + dx * ratio;
+        const pz = z1 + dz * ratio;
+        const mullion = box(`${name} mullion`, { x: FRAME_THICKNESS, y: height, z: FRAME_THICKNESS }, { x: px, y: height / 2, z: pz }, mats.aluminum, group);
+        mullion.rotation.y = angle;
+      }
+      safetyGroup.add(group);
+      return group;
+    }
+
+    addGlassWall("Fixed glass partition Z=11 X=0-24", 0, 11, 24, 11);
+    addGlassWall("Control room full-height south glass Z=10 X=14-24", 14, 10, 24, 10);
+    addGlassWall("Visitor corridor curtain wall Z=12 X=24-34", 24, 12, 34, 12);
+    addGlassWall("Control to visitor waist window", 24, 12, 24, 14, 2.2);
+
+    // === Zone Z1: Display Foyer ===
+    function addVideoWall(name, centerX, z, width, height, parent) {
+      const panelGroup = new THREE.Group();
+      panelGroup.name = name;
+      const panelMaterial = new THREE.MeshBasicMaterial({
+        map: createPanelTexture(["SST Microgrid", "Innovation Hub"], { width: 1024, height: 512, fontSize: 64 }),
+        toneMapped: false
+      });
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, height), panelMaterial);
+      panel.position.set(centerX, 2.3, z);
+      panel.rotation.y = Math.PI;
+      panelGroup.add(panel);
+      const frameY = 2.3;
+      const frameZ = z + 0.035;
+      const frameBars = [
+        { label: "top", size: { x: width + 0.22, y: 0.08, z: 0.05 }, pos: { x: centerX, y: frameY + height / 2 + 0.08, z: frameZ } },
+        { label: "bottom", size: { x: width + 0.22, y: 0.08, z: 0.05 }, pos: { x: centerX, y: frameY - height / 2 - 0.08, z: frameZ } },
+        { label: "left", size: { x: 0.08, y: height + 0.22, z: 0.05 }, pos: { x: centerX - width / 2 - 0.08, y: frameY, z: frameZ } },
+        { label: "right", size: { x: 0.08, y: height + 0.22, z: 0.05 }, pos: { x: centerX + width / 2 + 0.08, y: frameY, z: frameZ } }
+      ];
+      frameBars.forEach((bar) => {
+        const frame = box(`${name} LED frame ${bar.label}`, bar.size, bar.pos, mats.brand, panelGroup);
+        frame.rotation.y = Math.PI;
+      });
+      parent.add(panelGroup);
+      return panelGroup;
+    }
+
+    addVideoWall("Foyer customer demo video wall", 7, 13.83, EQUIPMENT_SIZES.videoWallFoyer.x, EQUIPMENT_SIZES.videoWallFoyer.y, equipmentGroup);
+
+    const kioskPositions = [
+      { x: 2.5, z: 12.2 },
+      { x: 5.4, z: 12.2 },
+      { x: 8.3, z: 12.2 },
+      { x: 11.2, z: 12.2 }
+    ];
+    kioskPositions.forEach((position, index) => {
+      const kiosk = new THREE.Group();
+      kiosk.name = `Interactive kiosk ${index + 1}`;
+      box("Kiosk pedestal", { x: EQUIPMENT_SIZES.kiosk.x, y: EQUIPMENT_SIZES.kiosk.y, z: EQUIPMENT_SIZES.kiosk.z }, { x: position.x, y: EQUIPMENT_SIZES.kiosk.y / 2, z: position.z }, mats.container, kiosk);
+      box("Kiosk display", { x: 0.52, y: 0.62, z: 0.055 }, { x: position.x, y: 1.15, z: position.z - 0.23 }, mats.display, kiosk);
+      equipmentGroup.add(kiosk);
+    });
+
+    // === Zone Z2: Control Room ===
+    addVideoWall("Control room 6-screen video wall", 19, 13.82, EQUIPMENT_SIZES.videoWallControl.x, EQUIPMENT_SIZES.videoWallControl.y, equipmentGroup);
+    const consolePositions = [
+      { x: 17.5, z: 12.0, ry: 0.24 },
+      { x: 20.5, z: 12.0, ry: -0.24 },
+      { x: 17.5, z: 10.9, ry: -0.18 },
+      { x: 20.5, z: 10.9, ry: 0.18 }
+    ];
+    consolePositions.forEach((position, index) => {
+      const consoleGroup = new THREE.Group();
+      consoleGroup.name = `Control console ${index + 1}`;
+      const base = box("Console desk", { x: EQUIPMENT_SIZES.console.x, y: EQUIPMENT_SIZES.console.y * 0.45, z: EQUIPMENT_SIZES.console.z }, { x: position.x, y: 0.37, z: position.z }, mats.wall, consoleGroup);
+      base.rotation.y = position.ry;
+      const top = box("Console angled screen", { x: 1.25, y: 0.55, z: 0.07 }, { x: position.x, y: 0.9, z: position.z - 0.18 }, mats.display, consoleGroup);
+      top.rotation.x = -0.26;
+      top.rotation.y = position.ry;
+      equipmentGroup.add(consoleGroup);
+    });
+
+    // === Zone Z4: Grid Simulation ===
+    function addCabinet(name, size, center, material, parent, labelLines = null) {
+      const group = new THREE.Group();
+      group.name = name;
+      box(`${name} cabinet body`, size, { x: center.x, y: size.y / 2, z: center.z }, material, group);
+      box(`${name} toe kick`, { x: size.x * 1.02, y: 0.08, z: size.z * 1.06 }, { x: center.x, y: 0.04, z: center.z }, mats.black, group);
+      box(`${name} status light strip`, { x: size.x * 0.86, y: 0.06, z: 0.035 }, { x: center.x, y: size.y + 0.06, z: center.z - size.z / 2 - 0.02 }, mats.brand, group);
+      if (labelLines) {
+        addSpriteLabel(`${name} label`, labelLines, { x: center.x, y: size.y + 0.72, z: center.z }, group, { x: Math.max(2.4, size.x * 0.75), y: 0.66 });
+      }
+      parent.add(group);
+      return group;
+    }
+
+    addCabinet("Grid simulator source", EQUIPMENT_SIZES.gridSource, { x: 3.1, z: 7.0 }, mats.container, equipmentGroup, ["電網模擬源", "Grid Simulator"]);
+    addCabinet("Regenerative load", EQUIPMENT_SIZES.regenLoad, { x: 7.3, z: 8.2 }, mats.container, equipmentGroup, ["回饋式負載", "Regen Load"]);
+
+    // === Zone Z5: SST Test ===
+    function createContainer(name, size, center, kind, parent) {
+      const group = new THREE.Group();
+      group.name = name;
+      const shell = new THREE.Group();
+      shell.name = `${name} shell`;
+      const internals = new THREE.Group();
+      internals.name = `${name} cutaway internals`;
+      const panelThickness = 0.06;
+      const halfX = size.x / 2;
+      const halfZ = size.z / 2;
+      const shellParts = {
+        floor: box(`${name} floor shell`, { x: size.x, y: panelThickness, z: size.z }, { x: 0, y: panelThickness / 2, z: 0 }, mats.container, shell),
+        roof: box(`${name} roof shell`, { x: size.x, y: panelThickness, z: size.z }, { x: 0, y: size.y - panelThickness / 2, z: 0 }, mats.container, shell),
+        north: box(`${name} north shell`, { x: size.x, y: size.y, z: panelThickness }, { x: 0, y: size.y / 2, z: halfZ - panelThickness / 2 }, mats.container, shell),
+        south: box(`${name} south shell`, { x: size.x, y: size.y, z: panelThickness }, { x: 0, y: size.y / 2, z: -halfZ + panelThickness / 2 }, mats.container, shell),
+        west: box(`${name} west shell`, { x: panelThickness, y: size.y, z: size.z }, { x: -halfX + panelThickness / 2, y: size.y / 2, z: 0 }, mats.container, shell),
+        east: box(`${name} east shell`, { x: panelThickness, y: size.y, z: size.z }, { x: halfX - panelThickness / 2, y: size.y / 2, z: 0 }, mats.container, shell)
+      };
+      box(`${name} brand LED band`, { x: size.x * 0.9, y: 0.08, z: 0.04 }, { x: 0, y: 2.1, z: -halfZ - 0.035 }, mats.brand, shell);
+      addSpriteLabel(`${name} white equipment label`, [name, kind === "sst" ? "5 MW SST" : "BESS 12 m"], { x: 0, y: 3.3, z: -0.2 }, group, { x: 3.6, y: 0.82 });
+
+      if (kind === "sst") {
+        const phaseXs = [-1.65, 0, 1.65];
+        phaseXs.forEach((x, index) => {
+          const core = box(`${name} phase ${index + 1} transformer core`, { x: 0.78, y: 1.4, z: 0.62 }, { x, y: 1.0, z: -0.18 }, makeMat("#64748B", { roughness: 0.48, metalness: 0.4 }), internals);
+          const coil = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.075, 12, 34), makeMat(["#F97316", "#38BDF8", "#22C55E"][index], { emissive: ["#7C2D12", "#075985", "#14532D"][index], emissiveIntensity: 0.18, roughness: 0.45, metalness: 0.22 }));
+          coil.name = `${name} phase ${index + 1} visible coil`;
+          coil.position.set(x, 1.02, -0.5);
+          coil.rotation.x = Math.PI / 2;
+          coil.castShadow = true;
+          internals.add(coil);
+          box(`${name} power electronics bay ${index + 1}`, { x: 0.72, y: 1.5, z: 0.38 }, { x, y: 1.05, z: 0.62 }, makeMat("#D1D5DB", { roughness: 0.55, metalness: 0.18 }), internals);
+          core.userData.phase = index + 1;
+        });
+      } else {
+        const moduleGeometry = new THREE.BoxGeometry(0.82, 0.32, 0.42);
+        const moduleMaterial = makeMat("#DCE4EA", { roughness: 0.5, metalness: 0.16 });
+        const columns = 10;
+        const rows = 4;
+        const count = columns * rows;
+        const modules = new THREE.InstancedMesh(moduleGeometry, moduleMaterial, count);
+        modules.name = `${name} battery module array`;
+        let instance = 0;
+        const dummy = new THREE.Object3D();
+        for (let col = 0; col < columns; col += 1) {
+          for (let row = 0; row < rows; row += 1) {
+            dummy.position.set(-5.0 + col * 1.08, 0.48 + row * 0.42, -0.34);
+            dummy.updateMatrix();
+            modules.setMatrixAt(instance, dummy.matrix);
+            instance += 1;
+          }
+        }
+        modules.castShadow = true;
+        modules.receiveShadow = true;
+        internals.add(modules);
+        box(`${name} DC busbar`, { x: 10.9, y: 0.08, z: 0.08 }, { x: 0, y: 2.05, z: 0.42 }, mats.brand, internals);
+      }
+
+      group.add(shell, internals);
+      group.position.set(center.x, 0, center.z);
+      parent.add(group);
+      const cutawayTarget = { group, shellParts, internals };
+      internals.visible = false;
+      if (kind === "sst") sstCutawayTargets.push(cutawayTarget);
+      if (kind === "bess") bessCutawayTargets.push(cutawayTarget);
+      return cutawayTarget;
+    }
+
+    createContainer("SST Container #1", EQUIPMENT_SIZES.sst, { x: 14.2, z: 6.55 }, "sst", equipmentGroup);
+    createContainer("SST Container #2", EQUIPMENT_SIZES.sst, { x: 14.2, z: 9.15 }, "sst", equipmentGroup);
+    const hv = addCabinet("35 kV HV grid-tie switchgear", EQUIPMENT_SIZES.hvCabinet, { x: 17.8, z: 10.32 }, mats.container, equipmentGroup, ["35 kV 並網柜", "Grid-tie Switchgear"]);
+    cylinder("HV cabinet red warning beacon", 0.12, 0.12, 0.18, 24, { x: 19.3, y: 2.55, z: 9.75 }, mats.redLight, hv);
+
+    const dcCabinetPositions = [
+      { x: 21.45, z: 7.0 },
+      { x: 22.55, z: 7.0 }
+    ];
+    dcCabinetPositions.forEach((position, index) => addCabinet(`DC outgoing cabinet ${index + 1}`, EQUIPMENT_SIZES.dcCabinet, position, mats.container, equipmentGroup, ["直流出線柜", `DC Out ${index + 1}`]));
+
+    // === Zone Z6: DC Microgrid ===
+    createContainer("BESS Container", EQUIPMENT_SIZES.bess, { x: 28, z: 6.55 }, "bess", equipmentGroup);
+    [{ x: 24.2, z: 9.85 }, { x: 27.0, z: 9.85 }, { x: 29.8, z: 9.85 }].forEach((position, index) => {
+      addCabinet(`DC Load and Bus cabinet ${index + 1}`, EQUIPMENT_SIZES.dcLoad, position, mats.container, equipmentGroup, ["DC Load", "DC Bus"]);
+    });
+
+    // === Zone Z7: Engineering Ops ===
+    addCabinet("Engineering workstation cabinet", { x: 2.8, y: 2.2, z: 0.8 }, { x: 37, z: 7.2 }, mats.wall, equipmentGroup, ["工程操作台", "Ops Console"]);
+    box("Engineering pegboard wall", { x: 0.08, y: 2.4, z: 4.6 }, { x: 39.85, y: 1.45, z: 8.6 }, makeMat("#CBD5E1", { roughness: 0.65 }), equipmentGroup);
+
+    // === Zone Z8/Z9: Maintenance and Truck Lane Objects ===
+    function addLiftingPoint(x, z, label) {
+      cylinder(`${label} floor puck`, 0.42, 0.42, 0.024, 48, { x, y: FLOOR.routeY + 0.012, z }, mats.hv, pathGroups.truck);
+      addSpriteLabel(`${label} label`, [label, "Lifting Point"], { x, y: 1.45, z: z + 0.48 }, pathGroups.truck, { x: 2.6, y: 0.62 });
+    }
+    addLiftingPoint(15, 3, "吊裝點 A");
+    addLiftingPoint(27, 3, "吊裝點 B");
+
+    // === Three Separated Circulation Paths ===
+    function addPathSegment(parent, start, end, color, dashed = false) {
+      const material = makeMat(color, { roughness: MATERIAL_DEFAULTS.routeRoughness, metalness: 0.01 });
+      const dx = end[0] - start[0];
+      const dz = end[1] - start[1];
+      const length = Math.hypot(dx, dz);
+      const angle = -Math.atan2(dz, dx);
+      const addDash = (offset, dashLength) => {
+        const ratio = (offset + dashLength / 2) / length;
+        const x = start[0] + dx * ratio;
+        const z = start[1] + dz * ratio;
+        const strip = box("Circulation path segment", { x: dashLength, y: 0.02, z: ROUTE_WIDTH }, { x, y: FLOOR.routeY, z }, material, parent);
+        strip.rotation.y = angle;
+      };
+      if (dashed) {
+        for (let offset = 0; offset < length; offset += DASH.length + DASH.gap) {
+          addDash(offset, Math.min(DASH.length, length - offset));
+        }
+      } else {
+        addDash(0, length);
+      }
+    }
+
+    PATHS.engineering.forEach(([start, end]) => addPathSegment(pathGroups.engineering, start, end, COLORS.engineering, true));
+    PATHS.truck.forEach(([start, end]) => addPathSegment(pathGroups.truck, start, end, COLORS.highVoltage, false));
+    PATHS.visitor.forEach(([start, end]) => addPathSegment(pathGroups.visitor, start, end, COLORS.visitor, false));
+
+    // === Reserved Conduits ===
+    function addDashedConduit(parent, points, y, name) {
+      const group = new THREE.Group();
+      group.name = name;
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const start = points[i];
+        const end = points[i + 1];
+        const dx = end[0] - start[0];
+        const dz = end[1] - start[1];
+        const length = Math.hypot(dx, dz);
+        const angle = -Math.atan2(dz, dx);
+        for (let offset = 0; offset < length; offset += 0.48) {
+          const dashLength = Math.min(0.28, length - offset);
+          const ratio = (offset + dashLength / 2) / length;
+          const x = start[0] + dx * ratio;
+          const z = start[1] + dz * ratio;
+          const dash = box("Reserved conduit dash", { x: dashLength, y: 0.045, z: 0.045 }, { x, y, z }, mats.conduit, group);
+          dash.rotation.y = angle;
+        }
+      }
+      parent.add(group);
+      return group;
+    }
+
+    addDashedConduit(conduitGroup, [[0.8, 11.24], [24, 11.24], [34, 12.24]], 8.42, "Showcase lighting power loop above north glass");
+    addDashedConduit(conduitGroup, [[6.5, 13.4], [19, 13.4], [19, 10.8]], 0.12, "High power display subfloor feed");
+    addDashedConduit(conduitGroup, [[2, 12.6], [12, 12.6], [25, 13.3], [38, 13.3]], 8.25, "Show system network cabling tray");
+    addDashedConduit(conduitGroup, [[7, 12.1], [14.5, 12.1], [18.8, 12.8]], 0.16, "Control to foyer communication conduit");
+
+    // === Lighting and Instanced Fixtures ===
+    scene.add(new THREE.HemisphereLight(COLORS.white, "#888888", 0.6));
+    const sun = new THREE.DirectionalLight(COLORS.white, 0.8);
+    sun.name = "SSE directional sun with shadows";
+    sun.position.set(18, 26, -16);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -25;
+    sun.shadow.camera.right = 45;
+    sun.shadow.camera.top = 28;
+    sun.shadow.camera.bottom = -22;
+    scene.add(sun);
+
+    function addRectLight(name, position, target, width, height, intensity) {
+      const light = new THREE.RectAreaLight(COLORS.warmWhite, intensity, width, height);
+      light.name = name;
+      light.position.set(position.x, position.y, position.z);
+      light.lookAt(target.x, target.y, target.z);
+      scene.add(light);
+      return light;
+    }
+    addRectLight("Foyer warm display light", { x: 7, y: 5.8, z: 12.4 }, { x: 7, y: 1.4, z: 12.4 }, 7, 3, 120);
+    addRectLight("Control room warm display light", { x: 19, y: 5.8, z: 12.2 }, { x: 19, y: 1.2, z: 12.2 }, 8, 3, 110);
+
+    const lightPositions = [];
+    for (let x = LIGHT_GRID.xStart; x <= LIGHT_GRID.xEnd; x += LIGHT_GRID.step) {
+      LIGHT_GRID.zRows.forEach((z) => lightPositions.push({ x, z }));
+    }
+    const fixtureGeometry = new THREE.BoxGeometry(1.15, 0.07, 0.24);
+    const fixtureMesh = new THREE.InstancedMesh(fixtureGeometry, mats.coldLight, lightPositions.length);
+    fixtureMesh.name = "Instanced equipment bay LED fixtures";
+    const fixtureDummy = new THREE.Object3D();
+    lightPositions.forEach((position, index) => {
+      fixtureDummy.position.set(position.x, LIGHT_GRID.y, position.z);
+      fixtureDummy.updateMatrix();
+      fixtureMesh.setMatrixAt(index, fixtureDummy.matrix);
+    });
+    fixtureMesh.castShadow = false;
+    fixtureMesh.receiveShadow = false;
+    root.add(fixtureMesh);
+
+    // === Crane Rails, Instanced Support Columns and Animated Hook ===
+    box("Crane rail south", { x: CRANE.x2 - CRANE.x1, y: 0.16, z: 0.18 }, { x: (CRANE.x1 + CRANE.x2) / 2, y: CRANE.railY, z: CRANE.railZ1 }, mats.crane, craneGroup);
+    box("Crane rail north", { x: CRANE.x2 - CRANE.x1, y: 0.16, z: 0.18 }, { x: (CRANE.x1 + CRANE.x2) / 2, y: CRANE.railY, z: CRANE.railZ2 }, mats.crane, craneGroup);
+    const columnXs = [];
+    for (let x = CRANE.x1; x <= CRANE.x2 + 0.01; x += CRANE.columnStep) columnXs.push(x);
+    const supportGeometry = new THREE.BoxGeometry(0.22, CRANE.railY, 0.22);
+    const supportMesh = new THREE.InstancedMesh(supportGeometry, mats.crane, columnXs.length * 2);
+    supportMesh.name = "Instanced crane rail support columns";
+    const supportDummy = new THREE.Object3D();
+    let supportIndex = 0;
+    columnXs.forEach((x) => {
+      [CRANE.railZ1, CRANE.railZ2].forEach((z) => {
+        supportDummy.position.set(x, CRANE.railY / 2, z);
+        supportDummy.updateMatrix();
+        supportMesh.setMatrixAt(supportIndex, supportDummy.matrix);
+        supportIndex += 1;
+      });
+    });
+    supportMesh.castShadow = true;
+    supportMesh.receiveShadow = true;
+    craneGroup.add(supportMesh);
+
+    const movingBridge = new THREE.Group();
+    movingBridge.name = "Animated crane bridge and hook";
+    box("Single girder crane bridge", { x: 0.38, y: 0.32, z: CRANE.railZ2 - CRANE.railZ1 + 0.9 }, { x: 0, y: CRANE.railY - 0.2, z: (CRANE.railZ1 + CRANE.railZ2) / 2 }, mats.crane, movingBridge);
+    box("Crane trolley", { x: 0.72, y: 0.34, z: 0.78 }, { x: 0, y: CRANE.railY - 0.55, z: CRANE.hookZ }, mats.black, movingBridge);
+    const cable = cylinder("Crane hook cable", 0.035, 0.035, 2.4, 12, { x: 0, y: CRANE.railY - 1.75, z: CRANE.hookZ }, mats.black, movingBridge);
+    cable.rotation.z = 0;
+    const hook = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.045, 10, 24, Math.PI * 1.45), mats.black);
+    hook.name = "Crane hook";
+    hook.position.set(0, CRANE.railY - 3.04, CRANE.hookZ);
+    hook.rotation.x = Math.PI / 2;
+    hook.castShadow = true;
+    movingBridge.add(hook);
+    addSpriteLabel("Crane 10 t label", ["10 t 橋式行吊", "Bridge Crane"], { x: 0, y: CRANE.railY + 0.55, z: CRANE.hookZ }, movingBridge, { x: 3.2, y: 0.72 });
+    craneGroup.add(movingBridge);
+
+    // === Emergency Stop Posts and Exit Signs ===
+    const estopPositions = [2, 8, 14, 20, 26, 32].map((x) => ({ x, z: x <= 24 ? 11.28 : 12.28 }));
+    estopPositions.forEach((position, index) => {
+      const post = new THREE.Group();
+      post.name = `E-Stop post ${index + 1}`;
+      cylinder("E-Stop red pole", 0.15, 0.15, 1.2, 24, { x: position.x, y: 0.6, z: position.z }, mats.redLight, post);
+      cylinder("E-Stop black base", 0.22, 0.22, 0.08, 24, { x: position.x, y: 0.04, z: position.z }, mats.black, post);
+      safetyGroup.add(post);
+    });
+
+    function addExitSign(name, position, rotationY = 0) {
+      const mat = new THREE.MeshBasicMaterial({ map: createPanelTexture(["EXIT"], { width: 512, height: 256, bg: "#052E16", fg: "#DCFCE7", accent: "#22C55E", fontSize: 96 }), transparent: true, toneMapped: false });
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.42), mat);
+      panel.name = name;
+      panel.position.set(position.x, position.y, position.z);
+      panel.rotation.y = rotationY;
+      safetyGroup.add(panel);
+    }
+    [
+      { name: "Exit sign visitor entry", pos: { x: 4, y: 2.6, z: 13.82 }, ry: Math.PI },
+      { name: "Exit sign north emergency", pos: { x: 30, y: 2.6, z: 13.82 }, ry: Math.PI },
+      { name: "Exit sign south emergency", pos: { x: 35, y: 2.6, z: 0.18 }, ry: 0 },
+      { name: "Exit sign engineering", pos: { x: 39.82, y: 2.6, z: 12 }, ry: -Math.PI / 2 },
+      { name: "Exit sign foyer west", pos: { x: 0.2, y: 2.5, z: 12.4 }, ry: Math.PI / 2 },
+      { name: "Exit sign control", pos: { x: 23.82, y: 2.5, z: 12.9 }, ry: -Math.PI / 2 },
+      { name: "Exit sign maintenance", pos: { x: 1.4, y: 2.5, z: 4.75 }, ry: 0 },
+      { name: "Exit sign truck door", pos: { x: 12.5, y: 5.45, z: 0.18 }, ry: 0 }
+    ].forEach((entry) => addExitSign(entry.name, entry.pos, entry.ry));
+
+    // === Equipment Cutaway State ===
+    function setCutaway(targets, enabled) {
+      targets.forEach(({ shellParts, internals }) => {
+        internals.visible = enabled;
+        shellParts.roof.visible = !enabled;
+        shellParts.south.visible = !enabled;
+        shellParts.north.material = enabled ? mats.containerTransparent : mats.container;
+        shellParts.east.material = enabled ? mats.containerTransparent : mats.container;
+        shellParts.west.material = enabled ? mats.containerTransparent : mats.container;
+      });
+    }
+
+    // === Camera Modes and UI ===
+    const status = document.getElementById("status");
+    const viewButtons = {
+      top: document.getElementById("viewTop"),
+      iso: document.getElementById("viewIso"),
+      walk: document.getElementById("viewWalk")
+    };
+    const ui = {
+      roofVisible: document.getElementById("roofVisible"),
+      roofTranslucent: document.getElementById("roofTranslucent"),
+      pathEngineering: document.getElementById("pathEngineering"),
+      pathTruck: document.getElementById("pathTruck"),
+      pathVisitor: document.getElementById("pathVisitor"),
+      sstCutaway: document.getElementById("sstCutaway"),
+      bessCutaway: document.getElementById("bessCutaway")
+    };
+    const viewState = {
+      mode: "iso",
+      walkYaw: -Math.PI / 2,
+      walkPitch: 0,
+      keys: new Set()
+    };
+
+    function setActiveButton(mode) {
+      Object.entries(viewButtons).forEach(([key, button]) => button.classList.toggle("active", key === mode));
+    }
+
+    function setView(mode) {
+      viewState.mode = mode;
+      camera.up.set(0, 1, 0);
+      controls.enabled = mode !== "walk";
+      controls.enableRotate = mode !== "top";
+      controls.enablePan = mode !== "top";
+      if (mode === "top") {
+        camera.position.set(20, CAMERA.topHeight, 7.001);
+        controls.target.set(20, 0, 7);
+        camera.lookAt(controls.target);
+        status.textContent = "Top 俯視圖：檢查九區面積、玻璃隔斷和三條獨立動線。快捷鍵 2 返回 ISO。";
+      }
+      if (mode === "iso") {
+        camera.position.set(36, 25, 25);
+        controls.target.set(20, 2, 7);
+        camera.lookAt(controls.target);
+        status.textContent = "ISO 等角視角。滑鼠拖曳旋轉，滾輪縮放。快捷鍵 1 Top，3 Walk。";
+      }
+      if (mode === "walk") {
+        camera.position.set(4.2, CAMERA.walkEyeHeight, 13.2);
+        viewState.walkYaw = Math.PI / 2;
+        viewState.walkPitch = -0.06;
+        status.textContent = "Walk 第一人稱漫遊：WASD / 方向鍵移動，左右方向鍵轉向，Esc 回到滑鼠。";
+        updateWalkCameraLook();
+      }
+      controls.update();
+      setActiveButton(mode);
+    }
+
+    function updateWalkCameraLook() {
+      const dir = new THREE.Vector3(
+        Math.sin(viewState.walkYaw) * Math.cos(viewState.walkPitch),
+        Math.sin(viewState.walkPitch),
+        Math.cos(viewState.walkYaw) * Math.cos(viewState.walkPitch)
+      );
+      camera.lookAt(camera.position.clone().add(dir));
+    }
+
+    function updateWalk(delta) {
+      if (viewState.mode !== "walk") return;
+      const turnLeft = viewState.keys.has("ArrowLeft");
+      const turnRight = viewState.keys.has("ArrowRight");
+      const moveForward = viewState.keys.has("KeyW") || viewState.keys.has("ArrowUp");
+      const moveBack = viewState.keys.has("KeyS") || viewState.keys.has("ArrowDown");
+      const moveLeft = viewState.keys.has("KeyA");
+      const moveRight = viewState.keys.has("KeyD");
+      if (turnLeft) viewState.walkYaw += CAMERA.walkTurnSpeed * delta;
+      if (turnRight) viewState.walkYaw -= CAMERA.walkTurnSpeed * delta;
+      const forward = new THREE.Vector3(Math.sin(viewState.walkYaw), 0, Math.cos(viewState.walkYaw));
+      const right = new THREE.Vector3(forward.z, 0, -forward.x);
+      const move = new THREE.Vector3();
+      if (moveForward) move.add(forward);
+      if (moveBack) move.sub(forward);
+      if (moveRight) move.add(right);
+      if (moveLeft) move.sub(right);
+      if (move.lengthSq() > 0) {
+        move.normalize().multiplyScalar(CAMERA.walkSpeed * delta);
+        camera.position.add(move);
+        camera.position.x = THREE.MathUtils.clamp(camera.position.x, 0.8, BUILDING.widthX - 0.8);
+        camera.position.z = THREE.MathUtils.clamp(camera.position.z, 0.8, BUILDING.depthZ - 0.8);
+      }
+      camera.position.y = CAMERA.walkEyeHeight;
+      updateWalkCameraLook();
+    }
+
+    viewButtons.top.addEventListener("click", () => setView("top"));
+    viewButtons.iso.addEventListener("click", () => setView("iso"));
+    viewButtons.walk.addEventListener("click", () => setView("walk"));
+
+    ui.roofVisible.addEventListener("change", () => { roofGroup.visible = ui.roofVisible.checked; });
+    ui.roofTranslucent.addEventListener("change", () => {
+      mats.roof.opacity = ui.roofTranslucent.checked ? 0.34 : 0.96;
+      mats.roof.needsUpdate = true;
+    });
+    ui.pathEngineering.addEventListener("change", () => { pathGroups.engineering.visible = ui.pathEngineering.checked; });
+    ui.pathTruck.addEventListener("change", () => { pathGroups.truck.visible = ui.pathTruck.checked; });
+    ui.pathVisitor.addEventListener("change", () => { pathGroups.visitor.visible = ui.pathVisitor.checked; });
+    ui.sstCutaway.addEventListener("change", () => setCutaway(sstCutawayTargets, ui.sstCutaway.checked));
+    ui.bessCutaway.addEventListener("change", () => setCutaway(bessCutawayTargets, ui.bessCutaway.checked));
+
+    window.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLButtonElement) return;
+      if (event.code === "Digit1") setView("top");
+      if (event.code === "Digit2") setView("iso");
+      if (event.code === "Digit3") setView("walk");
+      viewState.keys.add(event.code);
+    });
+    window.addEventListener("keyup", (event) => viewState.keys.delete(event.code));
+    renderer.domElement.addEventListener("click", () => {
+      if (viewState.mode === "walk" && document.pointerLockElement !== renderer.domElement) {
+        renderer.domElement.requestPointerLock?.();
+      }
+    });
+    window.addEventListener("mousemove", (event) => {
+      if (viewState.mode !== "walk" || document.pointerLockElement !== renderer.domElement) return;
+      viewState.walkYaw -= event.movementX * 0.0022;
+      viewState.walkPitch = THREE.MathUtils.clamp(viewState.walkPitch - event.movementY * 0.0018, -0.45, 0.38);
+    });
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // === Validation Helpers Exposed for Console QA ===
+    window.lab3d = {
+      unit: UNIT,
+      zones: ZONES.map((zone) => ({ ...zone, area: (zone.x2 - zone.x1) * (zone.z2 - zone.z1) })),
+      minClearHeight: BUILDING.minClearHeight,
+      craneCoverage: { x1: CRANE.x1, x2: CRANE.x2, z1: CRANE.railZ1, z2: CRANE.railZ2, railY: CRANE.railY },
+      setView,
+      setCutaway
+    };
+
+    setView("iso");
+    setCutaway(sstCutawayTargets, false);
+    setCutaway(bessCutawayTargets, false);
+
+    const clock = new THREE.Clock();
+    function animate() {
+      const elapsed = clock.getElapsedTime();
+      const delta = Math.min(clock.getDelta(), 0.05);
+      const craneTravel = (Math.sin(elapsed * 0.38) + 1) / 2;
+      movingBridge.position.x = THREE.MathUtils.lerp(CRANE.hookMinX, CRANE.hookMaxX, craneTravel);
+      movingBridge.position.y = Math.sin(elapsed * 1.1) * 0.035;
+      updateWalk(delta);
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
